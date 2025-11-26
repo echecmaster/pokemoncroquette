@@ -1,0 +1,2065 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon - Aventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+   <style>
+    /* Styles de base */
+    body {
+        font-family: 'Press Start 2P', cursive;
+        background-color: #000;
+        overflow: hidden;
+        height: 100vh;
+        text-transform: uppercase; 
+        color: white;
+    }
+
+    /* --- Styles d'Exploration --- */
+    #exploration-screen {
+        background: #000; 
+        image-rendering: pixelated;
+        opacity: 1; 
+        z-index: 10;
+        /* Le fond de la carte prend déjà tout l'espace */
+    }
+    
+    #game-container {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    #game-map {
+        position: absolute;
+        image-rendering: pixelated;
+        transition: transform 0.2s linear; 
+    }
+
+    #player-explorer-sprite {
+        position: absolute;
+        width: 25px; 
+        height: 25px; 
+        image-rendering: pixelated;
+        z-index: 1000;
+        /* NOUVEAU: La transition est maintenant sur l'image enfant */
+    }
+    
+    /* MODIFIÉ: Styles pour l'image (opacity et transition déplacées ici) */
+    #player-explorer-sprite img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        opacity: 1; /* Par défaut visible */
+        transition: opacity 0.3s ease; /* Ajout de la transition ici */
+    }
+    
+    .tile {
+        width: 25px;
+        height: 25px;
+        box-sizing: border-box;
+        position: absolute; 
+    }
+    .tile-forest { background-color: #006400; } 
+    .tile-grass { background-color: #7CFC00; }  
+    .tile-path { background-color: #CD853F; }   
+    
+    /* Styles pour les obstacles */
+    .tile-lava { background-color: #CC0000; } /* Obstacle rouge */
+    .tile-wall { background-color: #FFFFFF; } /* // NOUVEAU: Obstacle blanc */
+    .tile-yellow { background-color: #FFD700; } /* NOUVEAU: Tuile jaune */
+
+
+    /* Bouton d'inventaire sur la carte (Ancien emplacement) */
+    /* Ces styles ne sont plus utilisés puisque les boutons ont été retirés */
+
+    /* --- Arène de Combat --- */
+    #battle-arena {
+        background-image: url('images/back1.png');
+        background-size: cover;          
+        background-repeat: no-repeat;    
+        background-attachment: fixed;    
+        background-position: center;
+        image-rendering: pixelated;
+        position: relative;
+        transition: opacity 0.3s ease; 
+        opacity: 0; 
+        z-index: 20;
+        pointer-events: none;
+    }
+
+    /* CSS pour monter l'image du Pokémon du joueur (méthode absolue) */
+    /* --- Styles pour l'arène de combat --- */
+    #battle-arena img {
+        width: 200px; /* Définit une largeur fixe pour toutes les images de Pokémon */
+        object-fit: contain; /* S'assure que l'image s'ajuste dans la taille définie sans être coupée ou déformée */
+        image-rendering: pixelated; /* Maintient l'aspect pixelisé si vous utilisez des sprites */
+    }
+    
+/* ... dans votre balise <style> ... */
+
+/* --- Styles pour les sprites de Pokémon dans l'arène de combat --- */
+#player-pokemon-sprite, 
+#wild-pokemon-sprite {
+    width: 200px !important; /* Taille agrandie */
+    height: 200px !important; /* Taille agrandie */
+    object-fit: contain; 
+    image-rendering: pixelated; 
+    position: relative; /* IMPORTANT pour utiliser 'top' */
+}
+
+/* CSS pour monter l'image du Pokémon du joueur */
+/* Ceci va monter l'image du Pokémon du joueur sans utiliser de positionnement relatif */
+#player-pokemon-sprite {
+    /* Utilise une transformation pour décaler l'image verticalement (Y) */
+    /* La valeur négative (-50%) la monte de 50% de sa propre hauteur */
+    transform: translateY(-1150px); 
+    
+    /* Le 'transform' fonctionne mieux si l'élément est un bloc */
+    display: block; 
+}
+    /* Positions des sprites et plateformes */
+    .pokemon-platform { width: 200px; height: 50px; background: #a1887f; border: 4px solid #795548; border-radius: 0; box-shadow: none; position: absolute; }
+    #player-platform { bottom: 160px; left: 25%; } 
+    #opponent-platform { top: 25%; right: 25%; } 
+    .pokemon-sprite { position: absolute; width: 120px; height: 120px; transition: all 0.3s ease; image-rendering: pixelated; }
+    #player-sprite { bottom: calc(160px + 40px); left: calc(25% + 40px); }
+    #opponent-sprite { top: calc(25% - 110px); right: calc(25% + 40px); }
+
+    /* Infos Box */
+    .info-box {
+        background: rgba(255, 255, 255, 1); border: 4px solid #2d3748; border-radius: 0; padding: 12px;
+        width: 280px; box-shadow: none; color: #2d3748;
+    }
+    #opponent-info { position: absolute; top: 20px; right: 20px; } 
+    #player-info { position: absolute; bottom: 160px; left: 20px; } 
+
+
+    /* Barres de PV */
+    .hp-bar-container { height: 12px; background: #c0c0c0; border: 1px solid #2d3748; }
+    .hp-bar { height: 100%; transition: width 0.3s ease; }
+    .hp-green { background: #4caf50; }
+    .hp-yellow { background: #ffeb3b; }
+    .hp-red { background: #f44336; }
+    .rarity-tag { font-size: 0.6rem; padding: 2px 4px; border-radius: 0; font-weight: bold; border: 1px solid white; }
+
+    /* Panneaux du bas (Interface classique) */
+    #resource-display {
+        position: fixed; bottom: 300px; right: 0; width: 50%; height: 50px;
+        background: #2d3748; color: white; border-top: 4px solid #4a5568; 
+        border-left: 4px solid #4a5568; padding: 8px 20px; font-size: 0.7rem; 
+        display: flex; align-items: center; justify-content: space-between;
+        z-index: 25;
+    }
+    
+/* --- Styles pour les boîtes de sprites dans l'arène de combat --- */
+    
+    /* Le conteneur (la "boîte") aura une taille fixe */
+    #player-sprite-box, 
+    #wild-sprite-box {
+        width: 100%;       /* Largeur uniforme pour tous les Pokémon */
+        height: 100%;      /* Hauteur uniforme pour tous les Pokémon */
+        display: flex;      /* Permet d'utiliser flexbox pour le centrage */
+        justify-content: center; /* Centre l'image horizontalement */
+        align-items: center;     /* Centre l'image verticalement */
+        /* Vous pouvez ajouter une border pour visualiser les boîtes au besoin: border: 1px dashed red; */
+    }
+
+    /* L'image à l'intérieur de la boîte */
+    #player-sprite-box img, 
+    #wild-sprite-box img {
+        /* L'image elle-même est limitée pour ne pas dépasser la taille de sa boîte */
+        max-width: 100%;    /* Limite la largeur au conteneur (150px) */
+        max-height: 100%;   /* Limite la hauteur au conteneur (150px) */
+        width: auto;        /* Laisse la largeur de l'image s'adapter */
+        height: auto;       /* Laisse la hauteur de l'image s'adapter */
+        image-rendering: pixelated; 
+    }
+
+    #log-panel {
+        position: fixed; bottom: 140px; right: 0; width: 50%; height: 160px;
+        background: #2d3748; color: white; padding: 20px; font-size: 0.8rem; 
+        overflow-y: auto; border-left: 4px solid #4a5568; border-top: 4px solid #4a5568;
+        z-index: 25; display: block; 
+    }
+
+    #action-panel {
+        position: fixed; bottom: 0; right: 0; width: 50%; height: 140px;
+        background: #4a5568; border-top: 4px solid #2d3748; border-left: 4px solid #2d3748;
+        display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 15px;
+        z-index: 25;
+    }
+
+    .action-button {
+        border-radius: 0; font-weight: 600; text-transform: uppercase;
+        transition: all 0.2s ease; box-shadow: none; border: 2px solid #2d3748;
+        font-family: 'Press Start 2P', cursive; font-size: 0.7rem;
+    }
+
+    /* --- Panneau de Sélection de Pokémon / INVENTAIRE (Flexible) --- */
+    #switch-panel {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(45, 55, 72, 0.95);
+        display: none; 
+        /* Utilisation de flexbox pour une meilleure flexibilité verticale */
+        flex-direction: column; 
+        gap: 15px; padding: 20px;
+        z-index: 50; 
+        overflow-y: auto;
+    }
+    
+    /* NOUVEAU: Styles pour le Pokédex */
+    #pokedex-panel {
+        background: rgba(45, 55, 72, 0.95);
+        display: none; 
+        flex-direction: row; 
+        gap: 15px; padding: 20px;
+        z-index: 55; /* Plus haut que l'inventaire */
+        overflow-y: auto;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; /* Ajouté pour s'assurer qu'il couvre */
+    }
+
+    #inventory-content {
+        flex-grow: 1; /* Prend l'espace restant */
+        height: auto; /* Permet la croissance */
+        overflow-y: auto;
+    }
+
+    #roster-container {
+        /* Rends les cartes plus flexibles en utilisant repeat(auto-fit, minmax(...)) */
+        display: grid; 
+        /* MODIFIÉ: Augmenté de 200px à 250px pour des cartes plus larges */
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+        gap: 15px;
+    }
+
+    #resource-inventory-display {
+        /* Rends les ressources flexibles */
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        text-align: center;
+    }
+    
+    .resource-card {
+        font-family: 'Press Start 2P', cursive; /* Changement pour la cohérence */
+        border-radius: 0;
+    }
+
+    #healing-target-panel, #pokemon-detail-panel {
+        width: 100%; /* Prend toute la largeur de l'inventaire */
+        max-width: 800px; /* Ajoute une limite sur les grands écrans */
+        margin: 0 auto;
+    }
+    
+    .roster-card {
+        background: rgba(255, 255, 255, 0.1);
+        border: 4px solid white; 
+        padding: 10px;
+        text-align: center;
+        transition: all 0.2s ease;
+        box-shadow: none;
+    }
+    
+    /* NOUVEAU: Styles pour la Boutique */
+    #shop-panel {
+        transition: opacity 0.3s ease;
+    }
+
+    .shop-item-card {
+        background: rgba(255, 255, 255, 0.1);
+        border: 4px solid white; 
+        padding: 15px;
+        text-align: center;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    
+    .shop-item-card .buy-button {
+        font-family: 'Press Start 2P', cursive;
+        font-size: 0.7rem;
+        padding: 10px;
+        margin-top: 15px;
+        border: 2px solid #2d3748;
+    }
+    
+    /* NOUVEAU: Style pour l'image de l'objet */
+    .shop-item-image {
+        height: 80px;
+        width: auto;
+        margin: 0 auto 15px auto;
+        object-fit: contain;
+        image-rendering: pixelated;
+    }
+    
+    /* NOUVEAU: Style pour l'image de ressource */
+    .resource-item-image {
+        height: 60px;
+        width: auto;
+        margin: 0 auto 10px auto;
+        object-fit: contain;
+        image-rendering: pixelated;
+    }
+    
+</style>
+</head>
+<body onload="initializeGame()" tabindex="-1">
+
+    <div id="game-container">
+        
+        <div id="exploration-screen">
+            <div id="game-map">
+                </div>
+            <div id="player-explorer-sprite">
+                <img src="images/perso.png" alt="Joueur" style="width: 100%; height: 100%;">
+            </div>
+
+            </div>
+
+        <div id="battle-arena" class="flex flex-col h-full items-center justify-between p-4 relative">
+            
+            <div class="fixed top-2 right-2 text-xs flex gap-4 bg-gray-900 p-2 border-2 border-white">
+                <div>Poussière: <span id="dust-count" class="text-yellow-400">0</span></div>
+                <div>Potion: <span id="potion-count" class="text-green-400">0</span></div>
+            </div>
+
+            <div class="w-full flex justify-end items-start mt-8">
+                <div class="bg-gray-800 p-4 border-4 border-white text-xs w-80 mr-10">
+                    <div class="flex justify-between items-center mb-1">
+                        <span id="opponent-name">Ennemi</span>
+                        <span id="opponent-level">N. 5</span>
+                    </div>
+                    <div class="mb-1" id="opponent-rarity-display"></div>
+                    <div class="hp-bar-container">
+                        <div id="opponent-hp" class="hp-bar hp-green" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="opponent-sprite" class="absolute top-1/4 right-1/4 transform -translate-x-1/2" style="width: 80px; height: 80px;">
+                <img src="" alt="Opponent" style="width: 100%; height: 100%;">
+            </div>
+
+            <div class="w-full flex justify-start items-end mb-40">
+                <div id="player-sprite" class="absolute bottom-1/4 left-1/4 transform translate-x-1/2" style="width: 80px; height: 200px; transition: transform 0.4s;">
+                 <img src="" alt="Player" style="width: 100%; height: 100%;">
+                </div>
+                <div class="bg-gray-800 p-4 border-4 border-white text-xs w-80 ml-10">
+                    <div class="flex justify-between items-center mb-1">
+                        <span id="player-name">Joueur</span>
+                        <span id="player-level">N. 5</span>
+                    </div>
+                    <div class="hp-bar-container">
+                        <div id="player-hp" class="hp-bar hp-green" style="width: 100%;"></div>
+                    </div>
+                    <div class="text-right mt-1"><span id="player-hp-value">45/45</span> PV</div>
+                </div>
+            </div>
+
+            <div class="fixed bottom-0 left-0 right-0 p-4 bg-gray-900 border-t-4 border-white flex">
+                
+                <div id="log-panel" class="w-3/5 p-2 bg-black border-2 border-white text-xs h-32 overflow-y-auto">
+                    </div>
+                
+                <div class="w-2/5 p-2 grid grid-cols-2 gap-2">
+                    <button id="move-1" class="text-black font-bold p-2 bg-white hover:bg-gray-200 border-2 border-black">
+                        Attaque 1
+                    </button>
+                    <button id="move-2" class="text-black font-bold p-2 bg-white hover:bg-gray-200 border-2 border-black">
+                        Attaque 2
+                    </button>
+                    <button id="move-3" class="text-black font-bold p-2 bg-white hover:bg-gray-200 border-2 border-black">
+                        Attaque 3
+                    </button>
+                    <div class="flex flex-col gap-2"> 
+                         <button id="switch-button" class="text-white font-bold p-2 bg-blue-500 hover:bg-blue-600 border-2 border-white flex-grow">
+                            Échange
+                        </button>
+                        <button id="flee-button" class="text-white font-bold p-2 bg-red-500 hover:bg-red-600 border-2 border-white flex-grow" onclick="fleeBattle()">
+                            Fuir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="switch-panel" class="p-4">
+            
+            <div class="p-4 flex flex-col gap-4 bg-gray-800 border-4 border-white">
+                <div class="text-xl font-bold mb-4 border-b-2 pb-2">Inventaire</div>
+                
+                <button id="nav-pokemon" class="text-white font-bold p-3 bg-blue-700 hover:bg-blue-600">
+                    Pokémon
+                </button>
+                
+                <button id="nav-resources" class="text-white font-bold p-3 bg-gray-700 hover:bg-gray-600">
+                    Ressources
+                </button>
+
+                <button id="cancel-switch" class="text-white font-bold p-3 bg-red-700 hover:bg-red-600 mt-auto" onclick="closeSwitchPanel()">
+                    Retour
+                </button>
+            </div>
+
+            <div class="p-4 bg-gray-900 border-4 border-white overflow-y-auto">
+                
+                <div id="roster-container" class="grid gap-4">
+                    </div>
+                
+                <div id="pokemon-detail-panel" class="text-center p-6 max-w-lg mx-auto bg-gray-800 border-4 border-white" style="display: none;">
+                    </div>
+
+                 <div id="resource-inventory-display" class="grid grid-cols-2 gap-4">
+                    </div>
+            </div>
+        </div>
+
+    </div>
+    
+    <div id="pokedex-panel" class="p-4" style="display: none; opacity: 0; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(45, 55, 72, 0.95); z-index: 55; flex-direction: row; gap: 15px; overflow-y: auto;">
+        
+        <div class="w-1/3 p-4 flex flex-col gap-4 bg-gray-800 border-4 border-white">
+            <div class="text-xl font-bold mb-4 border-b-2 pb-2">Pokédex</div>
+            <p class="text-sm">Découvrez tous les Pokémon !</p>
+            <button id="close-pokedex" class="text-white font-bold p-3 bg-red-700 hover:bg-red-600 mt-auto" onclick="closePokedex()">
+                Retour (F)
+            </button>
+        </div>
+
+        <div class="w-2/3 p-4 bg-gray-900 border-4 border-white overflow-y-auto flex flex-col gap-4">
+            <div id="pokedex-grid" class="grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));">
+                </div>
+            
+            <div id="pokedex-detail-panel" class="p-6 bg-gray-800 border-4 border-white w-full" style="display: none;">
+                </div>
+        </div>
+        
+    </div>
+
+    <div id="shop-panel" class="p-4" style="display: none; opacity: 0; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 20, 30, 0.95); z-index: 60; flex-direction: column; gap: 15px; overflow-y: auto;">
+        
+        <div class="p-4 bg-gray-800 border-4 border-white text-center">
+            <div class="text-3xl font-bold mb-2">Boutique</div>
+            <div class="text-lg">Dépensez votre Poussière !</div>
+            <div class="mt-4 text-xl">
+                Votre Poussière: <span id="shop-dust-display" class="text-yellow-400">0</span>
+            </div>
+        </div>
+
+        <div id="shop-item-container" class="p-4 bg-gray-900 border-4 border-white overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            </div>
+
+        <div class="p-4 bg-gray-800 border-4 border-white">
+            <button id="close-shop-button" class="text-white font-bold p-3 bg-red-700 hover:bg-red-600 w-full" onclick="closeShop()">
+                Quitter la Boutique
+            </button>
+        </div>
+    </div>
+
+    <script>
+    // ==========================================================
+    // --- CONSTANTES ET DONNÉES DE LA CARTE (CHUNKS) ---
+    // ==========================================================
+    const TILE_SIZE = 25;   
+    const CHUNK_SIZE = 10;   
+    
+    // MODIFIÉ: Tailles différentes pour la largeur (W) et la hauteur (H)
+    // 7 chunks de large (70x25 = 1750px) et 5 chunks de haut (50x25 = 1250px)
+    const MAP_SIZE_CHUNKS_W = 10; 
+    const MAP_SIZE_CHUNKS_H = 5; 
+    
+    // MODIFIÉ: Position de départ changée de (5, 5) à (4, 8) pour commencer sur une tuile marchable (Chemin)
+    let playerCol = 4; 
+    let playerRow = 8; 
+    let isMoving = false; 
+    
+    // ==========================================================
+    // --- DÉFINITION DE LA CARTE STATIQUE ---
+    // ==========================================================
+    // 0 = Forêt, 1 = Herbe, 2 = Chemin
+    // 3 = Lave, 4 = Mur, 5 = Tuile Jaune (Boutique)
+    const myStaticMap = {
+        
+        // Chunk "0,0" - Le point de départ
+        "0,0": [
+            [1, 1, 1, 3, 3, 3, 3, 1, 1, 1], 
+            [1, 3, 3, 3, 3, 3, 3, 3, 3, 1], 
+            [1, 3, 3, 3, 3, 3, 4, 3, 3, 1], 
+            [1, 3, 3, 3, 3, 4, 4, 4, 3, 1], 
+            [2, 3, 3, 3, 3, 3, 4, 3, 3, 2], 
+            [2, 3, 3, 3, 3, 3, 3, 3, 3, 2], 
+            [1, 3, 3, 3, 5, 5, 3, 3, 3, 1], 
+            [1, 3, 3, 3, 2, 2, 3, 3, 3, 1], 
+            [1, 1, 1, 1, 2, 2, 1, 1, 1, 1], // Ligne 8 : La tuile (4,8) est '2' (Chemin)
+            [1, 1, 1, 1, 2, 2, 1, 1, 1, 1]  
+        ],
+        
+        // Chunk "0,1" - Le chunk juste en DESSOUS de "0,0"
+        "0,1": [
+            [1, 0, 0, 0, 2, 2, 0, 0, 0, 1], 
+            [0, 0, 0, 0, 2, 2, 0, 0, 0, 0], 
+            [0, 0, 0, 0, 2, 2, 0, 0, 0, 0], 
+            [0, 0, 0, 0, 2, 2, 0, 0, 0, 0], 
+            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2], 
+            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2], 
+            [0, 0, 0, 0, 2, 2, 0, 0, 0, 0], 
+            [0, 0, 0, 0, 2, 2, 0, 0, 0, 0], 
+            [0, 0, 0, 0, 2, 2, 0, 0, 0, 0], 
+            [1, 0, 0, 0, 2, 2, 0, 0, 0, 1]  
+        ],
+    };
+
+    // Initialise les chunks du monde avec votre carte statique
+    let worldChunks = { ...myStaticMap }; 
+
+    // ==========================================================
+    // --- BASE DE DONNÉES POKÉMON ---
+    // ... (Données conservées) ...
+    // ==========================================================
+    const attacks = {
+        charge: { name: "Charge", type: "Normal", power: 30 },
+        fouet_lianes: { name: "Fouet Lianes", type: "Plante", power: 40 },
+        flammeche: { name: "Flammèche", type: "Feu", power: 40 },
+        pistolet_a_o: { name: "Pistolet à O", type: "Eau", power: 40 },
+        vive_attaque: { name: "Vive-Attaque", type: "Normal", power: 35 }
+    };
+    
+    // MODIFIÉ: Ajout du champ 'history' pour le Pokédex
+    const pokemonDB = {
+        // --- COMMUN (3 Pokémon) ---
+        marisson: {
+            name: "Marisson", type: "Plante", level: 5, hp: 45, maxHp: 45, rarity: "Commun",
+            stats: { atk: 6, def: 5 }, moves: [attacks.charge, attacks.fouet_lianes, attacks.vive_attaque],
+            image: "images/marisson.png",
+            history: "Le Pokémon Épine. Il est connu pour son caractère joyeux et pour se protéger avec les épines de sa tête. (Starter Kalos n°1)"
+        },
+        feunnec: {
+            name: "Feunnec", type: "Feu", level: 5, hp: 40, maxHp: 40, rarity: "Commun",
+            stats: { atk: 7, def: 4 }, moves: [attacks.charge, attacks.flammeche, attacks.vive_attaque],
+            image: "images/feunnec.png",
+            history: "Le Pokémon Renard. Il respire de l'air chaud et est réputé pour son tempérament colérique. (Starter Kalos n°2)"
+        },
+        grenousse: {
+            name: "Grenousse", type: "Eau", level: 5, hp: 42, maxHp: 42, rarity: "Commun",
+            stats: { atk: 6, def: 4 }, moves: [attacks.charge, attacks.pistolet_a_o, attacks.vive_attaque],
+            image: "images/grenousse.png",
+            history: "Le Pokémon Bulle. Il protège son corps avec une couche de bulles, appelées Amphinobi. (Starter Kalos n°3)"
+        },
+        
+        // --- NOUVEAU: PEU COMMUN (3 Pokémon) ---
+        bulbizarre: {
+            name: "Bulbizarre", type: "Plante", level: 6, hp: 50, maxHp: 50, rarity: "Peu Commun",
+            stats: { atk: 7, def: 6 }, moves: [attacks.charge, attacks.fouet_lianes, attacks.vive_attaque],
+            image: "images/bulbizarre.png",
+            history: "Le Pokémon Graine. Il est très calme et s'endort souvent au soleil pour faire grandir la graine sur son dos."
+        },
+        salameche: {
+            name: "Salamèche", type: "Feu", level: 6, hp: 48, maxHp: 48, rarity: "Peu Commun",
+            stats: { atk: 8, def: 5 }, moves: [attacks.charge, attacks.flammeche, attacks.vive_attaque],
+            image: "images/salameche.png",
+            history: "Le Pokémon Lézard. La flamme au bout de sa queue est un indicateur de sa vitalité."
+        },
+        carapuce: {
+            name: "Carapuce", type: "Eau", level: 6, hp: 52, maxHp: 52, rarity: "Peu Commun",
+            stats: { atk: 7, def: 7 }, moves: [attacks.charge, attacks.pistolet_a_o, attacks.vive_attaque],
+            image: "images/carapuce.png",
+            history: "Le Pokémon Tortue. Sa carapace est un excellent bouclier et lui permet de glisser dans l'eau."
+        },
+        
+        // --- RARE (3 Pokémon) ---
+        pichu: {
+            name: "Pichu", type: "Electrik", level: 4, hp: 30, maxHp: 30, rarity: "Rare",
+            stats: { atk: 5, def: 3 }, moves: [attacks.charge, attacks.vive_attaque],
+            image: "images/pichu.png",
+            history: "Un bébé Pokémon. Il lui arrive souvent de se faire peur avec ses propres décharges électriques."
+        },
+        evoli: {
+            name: "Évoli", type: "Normal", level: 8, hp: 55, maxHp: 55, rarity: "Rare",
+            stats: { atk: 9, def: 8 }, moves: [attacks.charge, attacks.vive_attaque],
+            image: "images/evoli.png",
+            history: "Le Pokémon Évolution. Son code génétique instable lui permet d'évoluer de multiples façons."
+        },
+        abra: {
+            name: "Abra", type: "Psy", level: 8, hp: 40, maxHp: 40, rarity: "Rare",
+            stats: { atk: 10, def: 6 }, moves: [attacks.charge, attacks.vive_attaque],
+            image: "images/abra.png",
+            history: "Le Pokémon Psy. Il dort 18 heures par jour et se téléporte s'il est dérangé."
+        },
+        
+        // --- NOUVEAU: ÉPIQUE (3 Pokémon) ---
+        dracaufeu: {
+            name: "Dracaufeu", type: "Feu", level: 40, hp: 100, maxHp: 100, rarity: "Épique",
+            stats: { atk: 15, def: 10 }, moves: [attacks.charge, attacks.flammeche, attacks.vive_attaque],
+            image: "images/dracaufeu.png",
+            history: "Un dragon de feu redoutable. Sa flamme est si chaude qu'elle peut faire fondre la roche."
+        },
+        tortank: {
+            name: "Tortank", type: "Eau", level: 40, hp: 110, maxHp: 110, rarity: "Épique",
+            stats: { atk: 14, def: 12 }, moves: [attacks.charge, attacks.pistolet_a_o, attacks.vive_attaque],
+            image: "images/tortank.png",
+            history: "Le Pokémon Carapace. Ses canons à eau sont capables de percer de l'acier épais."
+        },
+        florizarre: {
+            name: "Florizarre", type: "Plante", level: 40, hp: 120, maxHp: 120, rarity: "Épique",
+            stats: { atk: 13, def: 13 }, moves: [attacks.charge, attacks.fouet_lianes, attacks.vive_attaque],
+            image: "images/florizarre.png",
+            history: "Un Pokémon massif qui contrôle la nature. La fleur sur son dos absorbe l'énergie solaire."
+        },
+        
+        // --- LÉGENDAIRE (2 Pokémon) ---
+        lugia: {
+            name: "Lugia", type: "Psy", level: 80, hp: 150, maxHp: 150, rarity: "Légendaire",
+            stats: { atk: 25, def: 20 }, moves: [attacks.charge, attacks.vive_attaque],
+            image: "images/lugia.png",
+            history: "Le gardien des mers. Il dort dans la fosse océanique la plus profonde pour éviter de causer des tempêtes."
+        },
+        hooh: {
+            name: "Ho-Oh", type: "Feu", level: 80, hp: 145, maxHp: 145, rarity: "Légendaire",
+            stats: { atk: 28, def: 18 }, moves: [attacks.charge, attacks.flammeche],
+            image: "images/hooh.png",
+            history: "Le Pokémon Arc-en-ciel. Il est dit qu'il apparaît aux dresseurs au cœur pur."
+        },
+        
+        // --- CHIMÈRE (3 Pokémon) ---
+        arceus: {
+            name: "Arceus", type: "Normal", level: 100, hp: 200, maxHp: 200, rarity: "Chimère",
+            stats: { atk: 30, def: 30 }, moves: [attacks.charge, attacks.vive_attaque],
+            image: "images/arceus.png",
+            history: "Le Pokémon Alpha. On dit qu'il a créé l'univers Pokémon."
+        },
+        zacian: {
+            name: "Zacian", type: "Fée", level: 100, hp: 180, maxHp: 180, rarity: "Chimère",
+            stats: { atk: 40, def: 35 }, moves: [attacks.charge, attacks.vive_attaque],
+            image: "images/zacian.png",
+            history: "Le Pokémon Lameguerrière. Il manie une épée enchantée capable de pourfendre n'importe quoi."
+        },
+        zamazenta: {
+            name: "Zamazenta", type: "Combat", level: 100, hp: 220, maxHp: 220, rarity: "Chimère",
+            stats: { atk: 35, def: 40 }, moves: [attacks.charge, attacks.vive_attaque],
+            image: "images/zamazenta.png",
+            history: "Le Pokémon Égideguerrière. Son bouclier peut dévier toutes les attaques."
+        }
+    };
+    
+    const typeChart = {
+        "Plante": { "superEfficace": ["Eau"], "pasTresEfficace": ["Feu"] },
+        "Feu": { "superEfficace": ["Plante"], "pasTresEfficace": ["Eau"] },
+        "Eau": { "superEfficace": ["Feu"], "pasTresEfficace": ["Plante"] },
+        "Normal": { "superEfficace": [], "pasTresEfficace": [] },
+        "Electrik": { "superEfficace": ["Eau"], "pasTresEfficace": ["Plante"] },
+        "Psy": { "superEfficace": [], "pasTresEfficace": [] },
+        "Fée": { "superEfficace": ["Combat"], "pasTresEfficace": [] },
+        "Combat": { "superEfficace": ["Normal"], "pasTresEfficace": ["Fée"] }
+    };
+
+    // ==========================================================
+    // --- ÉTAT DU JEU ---
+    // ==========================================================
+    
+    // FIX BUG 4: Commence avec un seul Pokémon (Marisson) pour simuler le choix de départ.
+    let activePokemonIndex = 0;
+    let playerRoster = [
+        { ...pokemonDB.marisson, hp: pokemonDB.marisson.maxHp } // Utilise Marisson comme starter
+    ];
+    let playerPokemon = playerRoster[activePokemonIndex];
+    let opponentPokemon = null;
+    let isInBattle = false;
+    let isPlayerTurn = true;
+    
+    // MODIFIÉ: playerResources
+    let playerResources = { dust: 100, potion: 3, deChance: 0 }; 
+    
+    // NOUVEAU: Variable globale pour le Pokédex
+    let pokedexData = {}; 
+    // NOUVEAU: Garder la trace des tours de combat pour la fuite
+    let battleTurnCount = 0;
+
+    // DOM ELEMENTS
+    const battleArena = document.getElementById('battle-arena');
+    const explorationScreen = document.getElementById('exploration-screen');
+    const gameMap = document.getElementById('game-map');
+    const playerExplorerSprite = document.getElementById('player-explorer-sprite');
+    // NOUVEAU: Référence à l'image du joueur
+    const playerExplorerImg = playerExplorerSprite.querySelector('img'); 
+    
+    const playerSprite = document.getElementById('player-sprite');
+    const opponentSprite = document.getElementById('opponent-sprite');
+    const logPanel = document.getElementById('log-panel');
+    const switchButton = document.getElementById('switch-button');
+    // NOUVEAU: Bouton Fuir
+    const fleeButton = document.getElementById('flee-button'); 
+
+    // NOUVEAUX ÉLÉMENTS D'INVENTAIRE
+    const switchPanel = document.getElementById('switch-panel');
+    const rosterContainer = document.getElementById('roster-container');
+    const cancelSwitchButton = document.getElementById('cancel-switch');
+    // SUPPRIMÉ: inventoryButtonMap et pokedex-button-map
+    const navPokemon = document.getElementById('nav-pokemon');
+    const navResources = document.getElementById('nav-resources');
+    const resourceInventoryDisplay = document.getElementById('resource-inventory-display');
+    const pokemonDetailPanel = document.getElementById('pokemon-detail-panel');
+    
+    // NOUVEAUX ÉLÉMENTS DE POKÉDEX
+    const pokedexPanel = document.getElementById('pokedex-panel'); 
+    const pokedexGrid = document.getElementById('pokedex-grid');
+    const pokedexDetailPanel = document.getElementById('pokedex-detail-panel');
+    
+    // NOUVEAUX ÉLÉMENTS DE LA BOUTIQUE
+    const shopPanel = document.getElementById('shop-panel');
+    const shopItemContainer = document.getElementById('shop-item-container');
+    const closeShopButton = document.getElementById('close-shop-button');
+    const shopDustDisplay = document.getElementById('shop-dust-display');
+    
+    // --- éléments de l'interface de combat
+    const playerName = document.getElementById('player-name');
+    const playerLevel = document.getElementById('player-level');
+    const playerHpBar = document.getElementById('player-hp');
+    const playerHpValue = document.getElementById('player-hp-value');
+    const opponentName = document.getElementById('opponent-name');
+    const opponentLevel = document.getElementById('opponent-level');
+    const opponentHpBar = document.getElementById('opponent-hp');
+    const opponentRarityDisplay = document.getElementById('opponent-rarity-display');
+    const move1 = document.getElementById('move-1');
+    const move2 = document.getElementById('move-2');
+    const move3 = document.getElementById('move-3');
+    const dustCountDisplay = document.getElementById('dust-count');
+    const potionCountDisplay = document.getElementById('potion-count');
+
+    const shopItems = {
+        potion: { name: "Potion", cost: 50, description: "Rend 50 PV à un Pokémon.", image: "images/potion.png" },
+        deChance: { name: "Dé de la Chance", cost: 100, description: "Multiplie vos gains de Poussière par 2 pour le prochain combat.", image: "images/dice.png" }
+    };
+    
+    const rarityDustCostBase = {
+        "Commun": 50, "Peu Commun": 100, "Rare": 200, "Épique": 500, "Légendaire": 1000, "Chimère": 2000
+    };
+
+    // ==========================================================
+    // --- INITIALISATION ---
+    // ==========================================================
+
+    function initializeGame() {
+        // NOUVEAU: Initialisation du Pokédex
+        initializePokedex(); 
+        
+        // Initialiser la carte et la vue
+        renderMap();
+        updateResourceDisplay();
+        
+        // S'assurer que le focus est sur le corps pour les touches ZQSD
+        document.body.focus();
+        
+        // Attacher les écouteurs d'événements
+        document.addEventListener('keydown', handleKeyDown);
+
+        // Attacher les événements des attaques
+        move1.onclick = () => playerAttack(0);
+        move2.onclick = () => playerAttack(1);
+        move3.onclick = () => playerAttack(2);
+        switchButton.onclick = () => openSwitchPanel(false, false);
+        
+        // FIX BUG 3: Ajout des gestionnaires de clic pour l'inventaire
+        navPokemon.onclick = () => renderInventory('pokemon', switchPanel.dataset.forceSwitch === 'true');
+        navResources.onclick = () => renderInventory('resources', switchPanel.dataset.forceSwitch === 'true');
+        
+        // S'assurer que l'inventaire et la boutique sont fermés au démarrage
+        closeSwitchPanel();
+        closeShop();
+        closePokedex(); // NOUVEAU: Assurer que le Pokédex est fermé
+        
+        // Assurer que le premier Pokémon est bien le Pokémon actif
+        playerPokemon = playerRoster[activePokemonIndex]; 
+    }
+    
+    // NOUVEAU: Fonction pour initialiser le Pokédex
+    function initializePokedex() {
+        pokedexData = {};
+        const keys = Object.keys(pokemonDB);
+        
+        keys.forEach((key, index) => {
+            // Le key est l'identifiant unique du Pokémon (ex: 'marisson')
+            pokedexData[key] = { 
+                status: 'unseen', // 'unseen', 'encountered', 'caught'
+                number: index + 1, // Assigne un numéro de Pokédex
+            };
+        });
+        
+        // Met à jour le statut des Pokémon que le joueur a déjà dans son roster
+        playerRoster.forEach(poke => {
+            const key = keys.find(k => pokemonDB[k].name === poke.name);
+            if (key) {
+                pokedexData[key].status = 'caught';
+            }
+        });
+
+        // S'assurer que les Pokémon de départ ont leurs infos de capture
+        playerRoster.forEach(poke => {
+             if (!poke.captureLevel) {
+                 // Les starters sont considérés comme capturés par le Dresseur au niveau où ils sont obtenus
+                 poke.captureLevel = poke.level;
+                 poke.capturedBy = "Dresseur"; 
+             }
+        });
+    }
+
+    // ==========================================================
+    // --- LOGIQUE DE CARTE ET MOUVEMENT ---
+    // ==========================================================
+    function getChunkKey(col, row) { return `${col},${row}`; } 
+    function generateRandomChunk(c, r) { 
+        const chunkData = []; 
+        for (let i = 0; i < CHUNK_SIZE; i++) { 
+            const row = Array(CHUNK_SIZE).fill(1); 
+            chunkData.push(row); 
+        } 
+        for (let i = 0; i < CHUNK_SIZE; i++) { 
+            chunkData[i][4] = 2; chunkData[i][5] = 2; 
+        } 
+        for (let j = 0; j < CHUNK_SIZE; j++) { 
+            chunkData[4][j] = 2; chunkData[5][j] = 2; 
+        } 
+        return chunkData; 
+    } 
+    function getTileData(worldCol, worldRow) { 
+        const chunkCol = Math.floor(worldCol / CHUNK_SIZE); 
+        const chunkRow = Math.floor(worldRow / CHUNK_SIZE); 
+        const tileCol = worldCol % CHUNK_SIZE; 
+        const tileRow = worldRow % CHUNK_SIZE; 
+        const key = getChunkKey(chunkCol, chunkRow); 
+        if (!worldChunks[key]) { 
+            worldChunks[key] = generateRandomChunk(chunkCol, chunkRow); 
+        } 
+        if (tileRow >= 0 && tileRow < CHUNK_SIZE && tileCol >= 0 && tileCol < CHUNK_SIZE) { 
+            return worldChunks[key][tileRow][tileCol]; 
+        } 
+        return 0; // Défaut : Forêt/Obstacle pour les tuiles en dehors de la carte connue 
+    }
+    
+    function getTileClass(id) {
+        switch (id) {
+            case 0: return 'tile-forest';
+            case 1: return 'tile-grass';
+            case 2: return 'tile-path';
+            case 3: return 'tile-lava'; 
+            case 4: return 'tile-wall'; 
+            case 5: return 'tile-yellow'; // Boutique
+            default: return 'tile-forest';
+        }
+    }
+    
+    function isWalkable(tileType) {
+        // Les tuiles non-marchables sont 3 (lave/rouge) et 4 (mur/blanc)
+        return tileType !== 3 && tileType !== 4;
+    }
+    
+    function renderMap() { 
+        const playerChunkCol = Math.floor(playerCol / CHUNK_SIZE); 
+        const playerChunkRow = Math.floor(playerRow / CHUNK_SIZE); 
+        let mapHTML = ''; 
+        const halfW = Math.floor(MAP_SIZE_CHUNKS_W / 2); 
+        const halfH = Math.floor(MAP_SIZE_CHUNKS_H / 2); 
+        for (let chunkR = playerChunkRow - halfH; chunkR <= playerChunkRow + halfH; chunkR++) { 
+            for (let chunkC = playerChunkCol - halfW; chunkC <= playerChunkCol + halfW; chunkC++) { 
+                const key = getChunkKey(chunkC, chunkR); 
+                let chunkData = worldChunks[key]; 
+                if (!chunkData) { 
+                    chunkData = generateRandomChunk(chunkC, chunkR); 
+                    worldChunks[key] = chunkData; 
+                } 
+                const gridCol = chunkC - (playerChunkCol - halfW); 
+                const gridRow = chunkR - (playerChunkRow - halfH); 
+                for (let r = 0; r < CHUNK_SIZE; r++) { 
+                    for (let c = 0; c < CHUNK_SIZE; c++) { 
+                        const tileId = chunkData[r][c]; 
+                        const className = getTileClass(tileId); 
+                        const tileX = (gridCol * CHUNK_SIZE + c) * TILE_SIZE; 
+                        const tileY = (gridRow * CHUNK_SIZE + r) * TILE_SIZE; 
+                        mapHTML += `<div class="tile ${className}" style="left: ${tileX}px; top: ${tileY}px;" data-type="${tileId}"></div>`; 
+                    } 
+                } 
+            } 
+        } 
+        gameMap.innerHTML = mapHTML; 
+        updateGameView(); 
+    } 
+    
+    function updateGameView() { 
+        const playerChunkCol = Math.floor(playerCol / CHUNK_SIZE); 
+        const playerChunkRow = Math.floor(playerRow / CHUNK_SIZE); 
+        const screenCenterX = window.innerWidth / 2; 
+        const screenCenterY = window.innerHeight / 2; 
+        const halfW = Math.floor(MAP_SIZE_CHUNKS_W / 2); 
+        const halfH = Math.floor(MAP_SIZE_CHUNKS_H / 2); 
+        
+        // La position locale du joueur est calculée par rapport au coin supérieur gauche de la grille de chunks affichée
+        const playerLocalCol = playerCol - (playerChunkCol - halfW) * CHUNK_SIZE; 
+        const playerLocalRow = playerRow - (playerChunkRow - halfH) * CHUNK_SIZE; 
+        
+        const playerLocalX = playerLocalCol * TILE_SIZE; 
+        const playerLocalY = playerLocalRow * TILE_SIZE; 
+        
+        const mapOffsetX = screenCenterX - playerLocalX - TILE_SIZE / 2; 
+        const mapOffsetY = screenCenterY - playerLocalY - TILE_SIZE / 2; 
+        
+        gameMap.style.width = `${MAP_SIZE_CHUNKS_W * CHUNK_SIZE * TILE_SIZE}px`; 
+        gameMap.style.height = `${MAP_SIZE_CHUNKS_H * CHUNK_SIZE * TILE_SIZE}px`; 
+        gameMap.style.transform = `translate(${mapOffsetX}px, ${mapOffsetY}px)`; 
+        playerExplorerSprite.style.left = `${screenCenterX - TILE_SIZE / 2}px`; 
+        playerExplorerSprite.style.top = `${screenCenterY - TILE_SIZE / 2}px`; 
+    }
+    
+    function movePlayer(dx, dy) {
+        if (isMoving) return;
+        
+        const newCol = playerCol + dx;
+        const newRow = playerRow + dy;
+        const targetTileType = getTileData(newCol, newRow);
+
+        if (!isWalkable(targetTileType)) {
+            // logMessage("Ce chemin est bloqué!"); // Supprimé: plus de log sur la carte
+            return;
+        }
+
+        const oldChunkCol = Math.floor(playerCol / CHUNK_SIZE);
+        const oldChunkRow = Math.floor(playerRow / CHUNK_SIZE);
+
+        isMoving = true;
+        
+        // Mise à jour de la position logique du joueur
+        playerCol = newCol;
+        playerRow = newRow;
+
+        const newChunkCol = Math.floor(playerCol / CHUNK_SIZE);
+        const newChunkRow = Math.floor(playerRow / CHUNK_SIZE);
+
+        // Mise à jour de la sprite du joueur pour l'animation de mouvement
+        const sprite = playerExplorerSprite.querySelector('img');
+        if (dx === -1) { sprite.style.transform = 'scaleX(1)'; } 
+        else if (dx === 1) { sprite.style.transform = 'scaleX(-1)'; }
+        
+        // MODIFIÉ: Si le joueur change de chunk, on doit redessiner la carte avant d'appliquer la translation
+        if (oldChunkCol !== newChunkCol || oldChunkRow !== newChunkRow) {
+            renderMap();
+        }
+
+        // Animation du mouvement (la map se déplace)
+        updateGameView();
+        
+        // Délai pour simuler le temps de mouvement
+        setTimeout(() => {
+            isMoving = false;
+            checkEncounter(playerCol, playerRow);
+        }, 200); 
+    }
+
+    function checkEncounter(col, row) {
+        const currentTileType = getTileData(col, row);
+        
+        // FIX BUG: Ouverture automatique de la boutique sur la tuile 5 (Jaune)
+        if (currentTileType === 5) {
+            // S'assurer que la boutique n'est pas déjà ouverte ou que nous sommes en combat/inventaire
+            if (!isInBattle && shopPanel.style.opacity === '0' && switchPanel.style.opacity === '0' && pokedexPanel.style.opacity === '0') {
+                 openShop();
+            }
+            return;
+        }
+
+        // Pas de rencontres sur les chemins (type 2) et tuiles boutique (type 5)
+        if (currentTileType === 2 || currentTileType === 5) {
+            return;
+        }
+
+        // Taux de rencontre: 25% dans la forêt (0), 5% dans l'herbe (1)
+        if (currentTileType === 0 && Math.random() < 0.25) {
+            startBattle();
+        } else if (currentTileType === 1 && Math.random() < 0.05) {
+            startBattle();
+        }
+    }
+
+    function handleKeyDown(event) {
+        const key = event.key.toLowerCase();
+        
+        // NOUVEAU: Toggle Pokedex (F key)
+        if (key === 'f' && !isInBattle && shopPanel.style.opacity === '0') {
+            event.preventDefault();
+            if (pokedexPanel.style.opacity === '0') {
+                openPokedex();
+            } else {
+                closePokedex();
+            }
+            return;
+        }
+        
+        // --- Toggle Inventory (I key) ---
+        // MODIFIÉ: Ajout de la condition pokedexPanel
+        if (key === 'i' && !isInBattle && shopPanel.style.opacity === '0' && pokedexPanel.style.opacity === '0') { 
+            event.preventDefault();
+            if (switchPanel.style.opacity === '0') {
+                openSwitchPanel(false, true);
+            } else {
+                closeSwitchPanel();
+            }
+            return;
+        }
+
+        // --- Toggle Shop (E key) ---
+        // MODIFIÉ: Ajout de la condition pokedexPanel
+        if (key === 'e' && !isInBattle && switchPanel.style.opacity === '0' && pokedexPanel.style.opacity === '0') { 
+            event.preventDefault();
+            const currentTileType = getTileData(playerCol, playerRow);
+            if (currentTileType === 5) {
+                if (shopPanel.style.opacity === '0') {
+                    openShop();
+                } else {
+                    closeShop();
+                }
+            } else {
+                // Si l'utilisateur appuie sur E mais n'est pas sur une tuile boutique, on ne fait rien
+                return;
+            }
+            return;
+        }
+
+        // --- Movement (ZQSD) ---
+        // MODIFIÉ: Ajout de la condition pokedexPanel
+        if (switchPanel.style.opacity !== '0' || shopPanel.style.opacity !== '0' || pokedexPanel.style.opacity !== '0' || isInBattle) return; 
+
+        switch(key) {
+            case 'z': movePlayer(0, -1); break;
+            case 's': movePlayer(0, 1); break;
+            case 'q': movePlayer(-1, 0); break;
+            case 'd': movePlayer(1, 0); break;
+        }
+    }
+
+    // ==========================================================
+    // --- LOGIQUE DE COMBAT ---
+    // ==========================================================
+
+    function startBattle(encounterType = 'wild', targetPokemonKey = null) {
+        // Désactiver le mouvement et l'inventaire
+        explorationScreen.style.opacity = '0';
+        explorationScreen.style.pointerEvents = 'none';
+        playerExplorerSprite.style.opacity = '0'; // Masque le conteneur complet pour la transition de combat
+        playerExplorerImg.style.opacity = '1'; // S'assurer que l'image est visible si le parent redevient visible
+        isInBattle = true;
+        
+        // Définir les sprites et activer l'arène
+        playerSprite.querySelector('img').src = playerPokemon.image;
+        
+        let randomKey;
+        if (targetPokemonKey) {
+            randomKey = targetPokemonKey;
+        } else { 
+            // 🔹 Choisir un Pokémon sauvage
+            const wildPokemons = [ 
+                'marisson', 'feunnec', 'grenousse', 'evoli', 
+                'dracaufeu', 'bulbizarre', 'salameche', 'carapuce', 
+                'lugia', 'hooh', 'zacian', 'arceus', 'tortank', 'zamazenta', 'pichu', 'abra', 'florizarre' 
+            ];
+            randomKey = wildPokemons[Math.floor(Math.random() * wildPokemons.length)];
+        }
+        
+        const baseOpponentStats = pokemonDB[randomKey];
+        opponentPokemon = { ...baseOpponentStats, stats: { ...baseOpponentStats.stats }, hp: baseOpponentStats.maxHp };
+        
+        // NOUVEAU: Mettre à jour le statut du Pokédex pour 'encountered'
+        const opponentKey = Object.keys(pokemonDB).find(k => pokemonDB[k].name === baseOpponentStats.name);
+        if (opponentKey && pokedexData[opponentKey].status === 'unseen') {
+            pokedexData[opponentKey].status = 'encountered';
+        }
+        
+        // NOUVEAU: Réinitialiser le compteur de tours de combat
+        battleTurnCount = 0;
+
+        battleArena.style.pointerEvents = 'auto';
+        battleArena.style.opacity = '1';
+        logPanel.innerHTML = '';
+        
+        // MODIFIÉ: Activer le bouton Fuir
+        [move1, move2, move3, switchButton, fleeButton].forEach(btn => btn.disabled = false); 
+
+        updateUI();
+        logMessage(`Un ${opponentPokemon.name} sauvage apparaît !`);
+        logMessage(`En avant, ${playerPokemon.name} !`);
+        isPlayerTurn = true;
+        updateUI();
+    }
+
+    function updateUI() {
+        playerPokemon = playerRoster[activePokemonIndex]; 
+        
+        playerName.textContent = playerPokemon.name;
+        playerLevel.textContent = `N. ${playerPokemon.level}`;
+        playerHpValue.textContent = `${playerPokemon.hp} / ${playerPokemon.maxHp}`;
+        updateHpBar(playerHpBar, playerPokemon.hp, playerPokemon.maxHp);
+        playerSprite.querySelector('img').src = playerPokemon.image; 
+        
+        opponentName.textContent = opponentPokemon.name;
+        opponentLevel.textContent = `N. ${opponentPokemon.level}`;
+        opponentRarityDisplay.innerHTML = getRarityTagHTML(opponentPokemon.rarity);
+        updateHpBar(opponentHpBar, opponentPokemon.hp, opponentPokemon.maxHp);
+        opponentSprite.querySelector('img').src = opponentPokemon.image;
+        
+        // Mise à jour des noms d'attaques
+        move1.textContent = playerPokemon.moves[0] ? playerPokemon.moves[0].name : "N/A";
+        move2.textContent = playerPokemon.moves[1] ? playerPokemon.moves[1].name : "N/A";
+        move3.textContent = playerPokemon.moves[2] ? playerPokemon.moves[2].name : "N/A";
+        
+        updateResourceDisplay();
+    }
+
+    function getRarityTagHTML(rarity) {
+        let colorClass = '';
+        switch (rarity) {
+            case 'Commun': colorClass = 'bg-gray-500'; break;
+            case 'Peu Commun': colorClass = 'bg-green-500'; break;
+            case 'Rare': colorClass = 'bg-blue-500'; break;
+            case 'Épique': colorClass = 'bg-purple-500'; break;
+            case 'Légendaire': colorClass = 'bg-yellow-500'; break;
+            case 'Chimère': colorClass = 'bg-red-500'; break;
+            default: colorClass = 'bg-gray-500';
+        }
+        return `<span class="rarity-tag ${colorClass}">${rarity}</span>`;
+    }
+    
+    function getTypeColorClass(type) {
+        switch (type) {
+            case 'Plante': return 'bg-green-500';
+            case 'Feu': return 'bg-red-500';
+            case 'Eau': return 'bg-blue-500';
+            case 'Electrik': return 'bg-yellow-500';
+            case 'Psy': return 'bg-purple-500';
+            case 'Fée': return 'bg-pink-500';
+            case 'Combat': return 'bg-orange-500';
+            case 'Chimère': return 'bg-purple-700';
+            case 'Normal': default: return 'bg-gray-500';
+        }
+    }
+
+    function updateHpBar(barElement, currentHp, maxHp) {
+        const percent = (currentHp / maxHp) * 100;
+        barElement.style.width = `${percent}%`;
+        barElement.classList.remove('hp-green', 'hp-yellow', 'hp-red');
+        if (percent > 50) {
+            barElement.classList.add('hp-green');
+        } else if (percent > 20) {
+            barElement.classList.add('hp-yellow');
+        } else {
+            barElement.classList.add('hp-red');
+        }
+    }
+
+    function playerAttack(moveIndex) {
+        if (!isPlayerTurn) return;
+        
+        // NOUVEAU: Incrémenter le compteur de tour au début de l'action du joueur
+        battleTurnCount++; 
+
+        isPlayerTurn = false;
+        const move = playerPokemon.moves[moveIndex];
+        logMessage(`${playerPokemon.name} utilise ${move.name} !`);
+
+        // Animation de l'attaque du joueur
+        playerSprite.style.transform = 'translateX(20px)';
+        setTimeout(() => playerSprite.style.transform = 'translateX(0)', 400);
+
+        setTimeout(() => {
+            const { damage, effectivenessMessage } = calculateDamage(playerPokemon, opponentPokemon, move);
+            if (effectivenessMessage) logMessage(effectivenessMessage);
+            
+            opponentPokemon.hp = Math.max(0, opponentPokemon.hp - damage);
+            updateUI();
+            
+            // Animation de dégâts de l'adversaire
+            opponentSprite.style.opacity = 0.5;
+            setTimeout(() => opponentSprite.style.opacity = 1, 300);
+
+            if (checkFaint(opponentPokemon, "L'adversaire")) {
+                return;
+            }
+
+            setTimeout(opponentTurn, 1500);
+        }, 500);
+    }
+
+    function opponentTurn() {
+        // S'assurer qu'il reste un Pokémon jouable
+        if (playerPokemon.hp <= 0) {
+            checkFaint(playerPokemon, playerPokemon.name);
+            return;
+        }
+
+        const moveIndex = Math.floor(Math.random() * opponentPokemon.moves.length);
+        const move = opponentPokemon.moves[moveIndex];
+        logMessage(`${opponentPokemon.name} utilise ${move.name} !`);
+        
+        // Animation de l'attaque de l'adversaire
+        opponentSprite.style.transform = 'translateX(-20px)';
+        setTimeout(() => opponentSprite.style.transform = 'translateX(0)', 400);
+
+        setTimeout(() => {
+            const { damage, effectivenessMessage } = calculateDamage(opponentPokemon, playerPokemon, move);
+            if (effectivenessMessage) logMessage(effectivenessMessage);
+            
+            playerPokemon.hp = Math.max(0, playerPokemon.hp - damage);
+            updateUI();
+            
+            // Animation de dégâts du joueur
+            playerSprite.style.opacity = 0.5;
+            setTimeout(() => playerSprite.style.opacity = 1, 300);
+            
+            if (checkFaint(playerPokemon, playerPokemon.name)) {
+                return;
+            }
+
+            isPlayerTurn = true;
+            logMessage(`Que doit faire ${playerPokemon.name} ?`);
+        }, 500);
+    }
+    
+    // NOUVEAU: Fonction pour fuir le combat
+    function fleeBattle() {
+        if (!isInBattle || !isPlayerTurn) return;
+        
+        const fledAtStart = battleTurnCount === 0;
+        
+        // Désactiver les boutons pendant l'action
+        [move1, move2, move3, switchButton, fleeButton].forEach(btn => btn.disabled = true);
+
+        logMessage(`${playerPokemon.name} tente de fuir...`);
+
+        // Chance de fuite de 80%
+        if (Math.random() < 0.8) { 
+            logMessage(`... et s'est échappé !`);
+            
+            // Si fuite au début et que le HP est full (pas de dégât subi)
+            if (fledAtStart && playerPokemon.hp === playerPokemon.maxHp) {
+                 logMessage(`Le combat est annulé, ${playerPokemon.name} est indemne.`);
+            } else {
+                 logMessage(`Le combat est terminé. ${playerPokemon.name} conserve ses dégâts.`);
+            }
+            
+            // Mettre à jour le roster du joueur avec le HP actuel avant de quitter
+            playerRoster[activePokemonIndex].hp = playerPokemon.hp;
+
+            endBattle(false);
+            
+        } else {
+            logMessage(`La fuite a échoué !`);
+            // Rétablir les boutons pour l'attaque
+            [move1, move2, move3, switchButton, fleeButton].forEach(btn => btn.disabled = false);
+            // L'adversaire attaque immédiatement après l'échec de la fuite
+            setTimeout(opponentTurn, 1000); 
+        }
+    }
+
+    function calculateDamage(attacker, defender, move) {
+        // ... (Code calculateDamage) ...
+        const attackStat = attacker.stats.atk;
+        const defenseStat = defender.stats.def;
+        
+        let multiplier = 1;
+        let effectivenessMessage = '';
+        
+        const effective = typeChart[move.type].superEfficace.includes(defender.type);
+        const notEffective = typeChart[move.type].pasTresEfficace.includes(defender.type);
+
+        if (effective) {
+            multiplier *= 2;
+            effectivenessMessage = "C'est super efficace !";
+        } else if (notEffective) {
+            multiplier *= 0.5;
+            effectivenessMessage = "Ce n'est pas très efficace...";
+        }
+
+        const baseDamage = Math.floor(((2 * attacker.level / 5 + 2) * move.power * (attackStat / defenseStat) / 50 + 2));
+        let damage = Math.floor(baseDamage * multiplier);
+        
+        // Ajouter la variabilité du dé de chance si actif
+        if (playerResources.deChance > 0) {
+            damage = damage * 2;
+            // Le dé est consommé après avoir servi
+            playerResources.deChance--; 
+            updateResourceDisplay();
+            logMessage("⭐ Le Dé de la Chance double les dégâts !");
+        }
+        
+        return { damage, effectivenessMessage };
+    }
+
+    function checkFaint(pokemon, name) {
+        if (pokemon.hp <= 0) {
+            logMessage(`${name} est K.O. !`);
+            if (pokemon === opponentPokemon) {
+                // Victoire du joueur
+                const dustGained = Math.floor(opponentPokemon.level * 5 + (Math.random() * 20));
+                playerResources.dust += dustGained;
+                
+                const catchChance = 50 - (opponentPokemon.rarity.length * 2); // Chance de capture plus basse pour les plus rares
+                
+                logMessage(`Vous avez gagné ! Vous trouvez **${dustGained} Poussière**.`);
+                setTimeout(() => {
+                    if (Math.random() * 100 < catchChance) {
+                        logMessage(`**<span style="color: yellow;">⭐</span> BIEN JOUÉ !** Vous avez capturé ${opponentPokemon.name} !`);
+                        
+                        const newPokemon = { 
+                            ...opponentPokemon, 
+                            hp: opponentPokemon.maxHp, 
+                            currentHp: opponentPokemon.maxHp,
+                            // NOUVEAU: Infos de capture
+                            captureLevel: opponentPokemon.level, 
+                            capturedBy: playerPokemon.name // Le Pokémon actif au moment de la capture
+                        };
+                        playerRoster.push(newPokemon);
+                        
+                        // NOUVEAU: Mettre à jour le statut du Pokédex pour 'caught'
+                        const caughtKey = Object.keys(pokemonDB).find(k => pokemonDB[k].name === opponentPokemon.name);
+                        if (caughtKey) {
+                             pokedexData[caughtKey].status = 'caught';
+                        }
+                    } else {
+                        logMessage(`${opponentPokemon.name} s'est échappé !`);
+                    }
+                    endBattle(true);
+                }, 2000);
+
+            } else if (pokemon === playerPokemon) {
+                const hasAvailablePokemon = playerRoster.some((p, index) => p.hp > 0 && index !== activePokemonIndex);
+                if (hasAvailablePokemon) {
+                    // Switch forcé
+                    openSwitchPanel(true, false);
+                    logMessage(`Vous devez choisir un autre Pokémon !`);
+                } else {
+                    logMessage("Tous vos Pokémon sont K.O. ! Vous avez perdu...");
+                    endBattle(false);
+                    return true;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    function endBattle(isVictory) {
+        // MODIFIÉ: S'assurer de désactiver tous les boutons d'action de combat, y compris Fuir
+        [move1, move2, move3, document.getElementById('switch-button'), document.getElementById('flee-button')].forEach(btn => {
+            if (btn) btn.disabled = true;
+        });
+        
+        updateResourceDisplay();
+        
+        // Délai pour laisser le message de fin de combat s'afficher
+        setTimeout(() => {
+            const returnButton = document.createElement('button');
+            returnButton.textContent = "Retourner Explorer";
+            returnButton.className = "text-white font-bold p-2 bg-blue-500 hover:bg-blue-600 border-2 border-white";
+            returnButton.onclick = () => {
+                battleArena.style.opacity = '0';
+                battleArena.style.pointerEvents = 'none';
+                opponentSprite.style.opacity = 1;
+                playerSprite.style.opacity = 1;
+                
+                // FIX: Forcer le bouton à perdre le focus immédiatement avant de démarrer l'exploration
+                returnButton.blur();
+                startExploration(); // <-- Appel à la fonction de nettoyage robuste
+                
+                document.body.focus();
+            };
+            logPanel.appendChild(returnButton);
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }, 2000);
+    }
+
+    // FIX : La fonction logMessage vérifie si nous sommes en combat pour éviter de polluer la console 
+    // et l'interface lorsque nous sommes en mode exploration.
+    function logMessage(message) {
+        if (!isInBattle) return;
+        
+        const msgElement = document.createElement('div');
+        msgElement.innerHTML = `> ${message}`;
+        logPanel.appendChild(msgElement);
+        logPanel.scrollTop = logPanel.scrollHeight; 
+    }
+
+    // MODIFIÉ: Rendre startExploration plus robuste pour cacher tous les autres panneaux
+    function startExploration() {
+        isInBattle = false;
+        
+        // Cacher explicitement tous les autres panneaux
+        battleArena.style.opacity = '0';
+        battleArena.style.pointerEvents = 'none';
+        pokedexPanel.style.opacity = '0';
+        pokedexPanel.style.pointerEvents = 'none';
+        shopPanel.style.opacity = '0';
+        shopPanel.style.pointerEvents = 'none';
+        switchPanel.style.opacity = '0';
+        switchPanel.style.pointerEvents = 'none';
+        
+        // Afficher l'exploration
+        explorationScreen.style.opacity = '1';
+        explorationScreen.style.pointerEvents = 'auto';
+        playerExplorerSprite.style.display = 'block'; 
+        playerExplorerSprite.style.opacity = '1'; // Rétablir l'opacité du conteneur (utile pour la transition de combat)
+        playerExplorerImg.style.opacity = '1'; // Rétablir l'opacité de l'image (pour l'exploration)
+    }
+
+    // ==========================================================
+    // --- LOGIQUE BOUTIQUE ---
+    // ==========================================================
+    function openShop() {
+        if (isInBattle || switchPanel.style.opacity === '1' || pokedexPanel.style.opacity === '1') return;
+        
+        // Cacher l'écran d'exploration
+        explorationScreen.style.opacity = '0';
+        explorationScreen.style.pointerEvents = 'none';
+        
+        // MODIFIÉ: Cible l'opacité de l'image
+        playerExplorerImg.style.opacity = '0'; 
+
+        // Préparer la boutique
+        shopDustDisplay.textContent = playerResources.dust;
+        renderShop();
+        
+        // Afficher la boutique avec une petite transition
+        shopPanel.style.display = 'flex'; 
+        setTimeout(() => {
+            shopPanel.style.opacity = '1';
+        }, 10);
+        shopPanel.style.pointerEvents = 'auto';
+    }
+    
+    function closeShop() {
+        shopPanel.style.opacity = '0';
+        shopPanel.style.pointerEvents = 'none';
+        setTimeout(() => { 
+            shopPanel.style.display = 'none'; 
+        }, 300);
+        
+        explorationScreen.style.opacity = '1';
+        explorationScreen.style.pointerEvents = 'auto';
+        
+        // MODIFIÉ: Rétablir l'opacité de l'image
+        playerExplorerImg.style.opacity = '1'; 
+        
+        // Redonner le focus au body pour le mouvement ZQSD
+        if (document.activeElement) document.activeElement.blur();
+        document.body.focus();
+    }
+    
+    function renderShop() { 
+        shopItemContainer.innerHTML = ''; 
+        for (const itemId in shopItems) { 
+            const item = shopItems[itemId]; 
+            const canAfford = playerResources.dust >= item.cost; 
+            const buttonClass = canAfford ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 cursor-not-allowed'; 
+            shopItemContainer.innerHTML += ` 
+                <div class="shop-item-card"> 
+                    <div> 
+                        <img src="${item.image}" alt="${item.name}" class="shop-item-image"> 
+                        <div class="text-2xl font-bold mb-2">${item.name}</div> 
+                        <div class="text-sm mb-4">${item.description}</div> 
+                    </div> 
+                    <div> 
+                        <div class="text-xl text-yellow-400 mb-4">Coût: ${item.cost} Poussière</div> 
+                        <button class="buy-button w-full ${buttonClass}" ${canAfford ? `onclick="buyItem('${itemId}')"` : 'disabled'} > 
+                            Acheter 
+                        </button> 
+                    </div> 
+                </div> `; 
+        } 
+    } 
+    
+    function buyItem(itemId) {
+        const item = shopItems[itemId];
+        if (!item || playerResources.dust < item.cost) {
+            return;
+        }
+        
+        playerResources.dust -= item.cost;
+        if (itemId === 'potion') {
+            playerResources.potion++;
+        } else if (itemId === 'deChance') {
+            playerResources.deChance++;
+        }
+        
+        shopDustDisplay.textContent = playerResources.dust;
+        updateResourceDisplay();
+        renderShop();
+    }
+
+
+    // ==========================================================
+    // --- LOGIQUE POKÉDEX ---
+    // ==========================================================
+
+    function openPokedex() {
+        if (isInBattle || shopPanel.style.opacity !== '0' || switchPanel.style.opacity !== '0') return;
+
+        if (pokedexPanel.style.opacity === '1') {
+            closePokedex();
+            return;
+        }
+        
+        // FIX BUG: Cache explicitement l'écran d'exploration et le sprite
+        // MODIFIÉ: Cible l'opacité de l'image
+        playerExplorerImg.style.opacity = '0'; 
+        explorationScreen.style.opacity = '0';
+        explorationScreen.style.pointerEvents = 'none';
+
+        // Préparation et affichage du Pokédex
+        renderPokedex();
+        
+        // Fermer l'inventaire si ouvert
+        closeSwitchPanel(); 
+        
+        pokedexPanel.style.display = 'flex';
+        setTimeout(() => {
+            pokedexPanel.style.opacity = '1';
+            pokedexPanel.style.pointerEvents = 'auto';
+        }, 10);
+    }
+
+    function closePokedex() {
+        pokedexPanel.style.opacity = '0';
+        pokedexPanel.style.pointerEvents = 'none';
+        setTimeout(() => { 
+            pokedexPanel.style.display = 'none'; 
+            pokedexDetailPanel.style.display = 'none'; // Cacher les détails
+        }, 300);
+        
+        // FIX BUG: Affiche explicitement l'écran d'exploration et le sprite
+        explorationScreen.style.opacity = '1';
+        explorationScreen.style.pointerEvents = 'auto';
+        // MODIFIÉ: Rétablir l'opacité de l'image
+        playerExplorerImg.style.opacity = '1'; 
+        
+        document.body.focus();
+    }
+
+    function renderPokedex() {
+        let html = '';
+        pokedexDetailPanel.style.display = 'none'; // Cacher les détails en revenant à la grille
+        
+        // Trier les clés par numéro de Pokédex
+        const sortedKeys = Object.keys(pokedexData).sort((a, b) => pokedexData[a].number - pokedexData[b].number);
+
+        sortedKeys.forEach(key => {
+            const entry = pokedexData[key];
+            const poke = pokemonDB[key];
+            let imageHtml = '';
+            let clickHandler = '';
+            let cardClass = 'opacity-50 cursor-not-allowed';
+            
+            // Toujours afficher le numéro
+            const pokeNumber = entry.number.toString().padStart(3, '0');
+
+            if (entry.status === 'caught' || entry.status === 'encountered') {
+                const imageStyle = entry.status === 'encountered' ? 'filter: grayscale(100%);' : '';
+                imageHtml = `<img src="${poke.image}" alt="${poke.name}" style="width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; ${imageStyle}">`;
+                cardClass = 'cursor-pointer hover:bg-gray-700 opacity-100';
+
+                if (entry.status === 'caught') {
+                    // Seulement si il est capturé on peut cliquer pour voir les détails
+                    clickHandler = `showPokedexDetail('${key}')`;
+                } else if (entry.status === 'encountered') {
+                    // On peut voir l'image mais pas les détails si juste rencontré
+                     clickHandler = `showPokedexDetail('${key}', true)`;
+                }
+            } else {
+                // Seulement le numéro
+                imageHtml = `<div class="text-3xl text-gray-500 flex items-center justify-center h-full">${pokeNumber}</div>`;
+                cardClass = 'opacity-50 pointer-events-none';
+            }
+
+            html += `
+                <div class="roster-card p-2 text-center h-40 flex flex-col justify-center items-center ${cardClass}" onclick="${clickHandler}">
+                    <div class="text-xs text-gray-400">N° ${pokeNumber}</div>
+                    <div class="w-20 h-20 my-2">
+                        ${imageHtml}
+                    </div>
+                    <div class="text-sm font-bold">${entry.status === 'caught' ? poke.name : (entry.status === 'encountered' ? '???' : 'Inconnu')}</div>
+                </div>
+            `;
+        });
+        pokedexGrid.innerHTML = html;
+    }
+
+    function showPokedexDetail(key, isEncounteredOnly = false) {
+        const poke = pokemonDB[key];
+        const entry = pokedexData[key];
+
+        const pokeNumber = entry.number.toString().padStart(3, '0');
+        
+        let detailContent = '';
+
+        if (isEncounteredOnly) {
+             detailContent = `
+                <div class="flex flex-col items-center justify-center gap-6 mb-6">
+                     <div class="w-32 h-32 filter grayscale">
+                         <img src="${poke.image}" alt="Inconnu" class="w-full h-full object-contain image-rendering: pixelated;">
+                     </div>
+                     <div class="text-center w-full">
+                         <div class="text-3xl font-bold mb-1">??? <span class="text-lg text-gray-400">N° ${pokeNumber}</span></div>
+                         <div class="text-xl text-red-500">Pokémon rencontré, non capturé.</div>
+                     </div>
+                </div>
+                <div class="text-center mt-4 text-sm text-gray-400">
+                     <p>Capturez ce Pokémon pour débloquer ses détails complets !</p>
+                </div>
+            `;
+        } else {
+            // Détails complets (si capturé)
+            const rosterPoke = playerRoster.find(p => p.name === poke.name && p.captureLevel); 
+            const weaknesses = typeChart[poke.type].pasTresEfficace.join(', ') || 'Aucune';
+            const strengths = typeChart[poke.type].superEfficace.join(', ') || 'Aucune';
+            const history = poke.history || "Aucune histoire enregistrée pour ce Pokémon.";
+
+            detailContent = `
+                <div class="flex flex-col md:flex-row items-center justify-center gap-6 mb-6">
+                     <div class="w-32 h-32">
+                         <img src="${poke.image}" alt="${poke.name}" class="w-full h-full object-contain image-rendering: pixelated;">
+                     </div>
+                     <div class="text-left w-full md:w-auto">
+                         <div class="text-3xl font-bold mb-1">${poke.name} <span class="text-lg text-gray-400">N° ${pokeNumber}</span></div>
+                         <div class="my-2">
+                             <span class="pokemon-type-tag ${getTypeColorClass(poke.type)} text-white">${poke.type}</span> 
+                             ${getRarityTagHTML(poke.rarity)}
+                         </div>
+                         <div class="text-sm mt-3">
+                             <strong>Niv. Capture:</strong> ${rosterPoke ? rosterPoke.captureLevel : 'N/A'}<br>
+                             <strong>Capturé par:</strong> ${rosterPoke ? rosterPoke.capturedBy : 'N/A'}
+                         </div>
+                     </div>
+                </div>
+                
+                <div class="text-left border-t-4 border-b-4 border-white py-4 w-full mx-auto">
+                    <div class="text-lg font-bold mb-2">Informations de Combat</div>
+                    <p class="text-sm mb-1"><strong>Faiblesses (Craint):</strong> ${weaknesses}</p>
+                    <p class="text-sm"><strong>Forces (Supérieur):</strong> ${strengths}</p>
+                </div>
+                
+                <div class="text-left mt-4">
+                     <div class="text-lg font-bold mb-2">Histoire</div>
+                     <p class="text-sm">${history}</p>
+                </div>
+            `;
+        }
+
+        pokedexDetailPanel.innerHTML = `
+            ${detailContent}
+            <button class="mt-6 text-white font-bold p-3 bg-blue-700 hover:bg-blue-600 w-full" onclick="renderPokedex()">
+                Retour à la liste
+            </button>
+        `;
+        pokedexDetailPanel.style.display = 'block';
+    }
+
+
+    // ==========================================================
+    // --- LOGIQUE D'INVENTAIRE ---
+    // ==========================================================
+    
+    // MODIFIÉ: Rend la fonction plus robuste pour masquer l'écran d'exploration
+    function openSwitchPanel(forceSwitch = false, onMap = false) {
+        if (playerPokemon) {
+            playerRoster[activePokemonIndex].hp = playerPokemon.hp;
+        }
+        switchPanel.dataset.forceSwitch = forceSwitch;
+        switchPanel.dataset.onMap = onMap;
+        
+        // NOUVEAU: Fermer le Pokédex si ouvert
+        closePokedex();
+
+        if (isInBattle) {
+            battleArena.style.opacity = '0';
+            battleArena.style.pointerEvents = 'none';
+            // Disable move/flee buttons
+            [move1, move2, move3, switchButton, fleeButton].forEach(btn => btn.disabled = true); 
+        } 
+        
+        // FIX BUG: Masquer TOUJOURS l'écran d'exploration et le sprite
+        explorationScreen.style.opacity = '0';
+        explorationScreen.style.pointerEvents = 'none';
+        // MODIFIÉ: Cible l'opacité de l'image
+        playerExplorerImg.style.opacity = '0'; 
+
+        renderInventory('pokemon', forceSwitch); 
+        
+        switchPanel.style.display = 'flex'; 
+        setTimeout(() => {
+            switchPanel.style.opacity = '1';
+            switchPanel.style.pointerEvents = 'auto';
+        }, 10);
+    }
+
+    function closeSwitchPanel() {
+        switchPanel.style.opacity = '0';
+        switchPanel.style.pointerEvents = 'none';
+        setTimeout(() => { 
+            switchPanel.style.display = 'none'; 
+        }, 300);
+        pokemonDetailPanel.style.display = 'none';
+        rosterContainer.style.display = 'none';
+        resourceInventoryDisplay.style.display = 'none';
+        
+        const wasOnMap = switchPanel.dataset.onMap === 'true';
+
+        if (isInBattle) {
+            battleArena.style.opacity = '1';
+            battleArena.style.pointerEvents = 'auto';
+            [move1, move2, move3, switchButton, fleeButton].forEach(btn => btn.disabled = false); // MODIFIÉ: Rétablir les boutons, y compris Fuir
+
+        } else if (wasOnMap) {
+            explorationScreen.style.opacity = '1';
+            explorationScreen.style.pointerEvents = 'auto';
+            // MODIFIÉ: Rétablir l'opacité de l'image
+            playerExplorerImg.style.opacity = '1'; 
+        }
+        
+        // Redonner le focus au body pour le mouvement ZQSD
+        if (document.activeElement) document.activeElement.blur();
+        document.body.focus();
+    }
+
+    function renderInventory(tab, isForcedSwitch) {
+        document.getElementById('nav-pokemon').classList.remove('bg-blue-700', 'bg-gray-700', 'hover:bg-gray-600');
+        document.getElementById('nav-resources').classList.remove('bg-blue-700', 'bg-gray-700', 'hover:bg-gray-600');
+        
+        if (tab === 'pokemon') {
+            document.getElementById('nav-pokemon').classList.add('bg-blue-700');
+            document.getElementById('nav-resources').classList.add('bg-gray-700', 'hover:bg-gray-600');
+            renderPokemonRoster(isForcedSwitch);
+            resourceInventoryDisplay.style.display = 'none';
+        } else {
+            document.getElementById('nav-resources').classList.add('bg-blue-700');
+            document.getElementById('nav-pokemon').classList.add('bg-gray-700', 'hover:bg-gray-600');
+            renderResourceInventory();
+            rosterContainer.style.display = 'none';
+        }
+    }
+
+    function renderPokemonRoster(isForcedSwitch) {
+        pokemonDetailPanel.style.display = 'none';
+        rosterContainer.style.display = 'grid';
+
+        let html = '';
+        playerRoster.forEach((poke, index) => {
+            const isActive = index === activePokemonIndex;
+            const isFainted = poke.hp <= 0;
+            const isDisabledForced = isForcedSwitch && (isFainted || isActive);
+            
+            const cardClass = isActive ? 'active border-yellow-500' : (isFainted ? 'opacity-50 cursor-not-allowed border-red-500' : 'border-white');
+            
+            // Le clic n'ouvre les détails que si le switch n'est pas forcé ou s'il s'agit du Pokémon actif
+            const clickHandler = isDisabledForced ? '' : `showPokemonDetail(${index}, ${isForcedSwitch})`;
+
+            html += `
+                <div class="roster-card p-4 ${cardClass} ${isDisabledForced ? 'pointer-events-none' : ''}" onclick="${clickHandler}">
+                    <div class="text-xl font-bold mb-1">${poke.name}</div>
+                    <div class="text-sm">N. ${poke.level}</div>
+                    <div class="hp-bar-container my-2">
+                        <div id="roster-hp-${index}" class="hp-bar ${updateHpBarColor(poke.hp, poke.maxHp)}" style="width: ${Math.max(0, poke.hp / poke.maxHp) * 100}%;"></div>
+                    </div>
+                    <div class="text-xs mb-2">${poke.hp} / ${poke.maxHp} PV</div>
+                    <span class="pokemon-type-tag ${getTypeColorClass(poke.type)} text-white">${poke.type}</span>
+                    ${getRarityTagHTML(poke.rarity)}
+                    ${isActive ? '<div class="text-sm font-bold text-yellow-500 mt-1">Actif</div>' : ''}
+                    ${isFainted ? '<div class="text-sm font-bold text-red-500 mt-1">K.O.</div>' : ''}
+                </div>
+            `;
+        });
+        rosterContainer.innerHTML = html;
+    }
+
+    function updateHpBarColor(currentHp, maxHp) {
+        const percent = (currentHp / maxHp) * 100;
+        if (percent > 50) return 'hp-green';
+        if (percent > 20) return 'hp-yellow';
+        return 'hp-red';
+    }
+
+    function renderResourceInventory() {
+        rosterContainer.style.display = 'none';
+        pokemonDetailPanel.style.display = 'none';
+        resourceInventoryDisplay.style.display = 'grid';
+        
+        let html = `
+            <div class="resource-card p-4 bg-gray-800 border-4 border-white">
+                <img src="images/dust.png" alt="Poussière" class="resource-item-image">
+                <div class="text-xl font-bold">Poussière</div>
+                <div class="text-2xl text-yellow-400 mt-2">${playerResources.dust}</div>
+                <div class="text-xs mt-1">Monnaie du jeu.</div>
+            </div>
+            
+            <div class="resource-card p-4 bg-gray-800 border-4 border-white">
+                <img src="images/potion.png" alt="Potion" class="resource-item-image">
+                <div class="text-xl font-bold">Potion</div>
+                <div class="text-2xl text-green-400 mt-2">${playerResources.potion}</div>
+                <div class="text-xs mt-1">Rend 50 PV à un Pokémon.</div>
+            </div>
+            
+            <div class="resource-card p-4 bg-gray-800 border-4 border-white">
+                <img src="images/dice.png" alt="Dé de la Chance" class="resource-item-image">
+                <div class="text-xl font-bold">Dé de la Chance</div>
+                <div class="text-2xl text-blue-400 mt-2">${playerResources.deChance}</div>
+                <div class="text-xs mt-1">Double les gains de Poussière du prochain combat.</div>
+            </div>
+        `;
+        resourceInventoryDisplay.innerHTML = html;
+    }
+
+    function showPokemonDetail(index, isForcedSwitch) {
+        const poke = playerRoster[index];
+        rosterContainer.style.display = 'none';
+        resourceInventoryDisplay.style.display = 'none';
+        pokemonDetailPanel.style.display = 'block';
+        
+        const canHeal = playerResources.potion > 0 && poke.hp < poke.maxHp;
+        const canSwitch = isInBattle && poke.hp > 0 && index !== activePokemonIndex && !isForcedSwitch;
+        const canRecycle = !isInBattle && index !== activePokemonIndex; // Ne peut pas recycler le Pokémon actif sur la carte
+        const canUpgrade = !isInBattle; // Peut toujours améliorer
+        
+        const healButtonClass = canHeal ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 cursor-not-allowed';
+        const switchButtonClass = canSwitch ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-500 cursor-not-allowed';
+        
+        const switchButtonText = isForcedSwitch ? "Choisir ce Pokémon" : "Choisir en Combat";
+        
+        const weaknesses = typeChart[poke.type].pasTresEfficace.join(', ') || 'Aucune';
+        const strengths = typeChart[poke.type].superEfficace.join(', ') || 'Aucune';
+        
+        const upgradeCost = calculateUpgradeCost(poke);
+        const canAffordUpgrade = playerResources.dust >= upgradeCost;
+        const upgradeButtonClass = canAffordUpgrade ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 cursor-not-allowed';
+        
+        // FIX: Classe de surlignage rouge/jaune pour le bouton recycler
+        const recycleButtonClass = canRecycle 
+            ? 'bg-red-700 hover:bg-red-600 border-4 border-yellow-400 text-yellow-400' 
+            : 'bg-gray-500 cursor-not-allowed text-white';
+
+        pokemonDetailPanel.innerHTML = `
+            <div class="flex flex-col md:flex-row items-center justify-center gap-6">
+                 <div class="w-32 h-32">
+                     <img src="${poke.image}" alt="${poke.name}" class="w-full h-full object-contain image-rendering: pixelated;">
+                 </div>
+                 <div class="text-left w-full md:w-auto">
+                     <div class="text-3xl font-bold mb-1">${poke.name}</div>
+                     <div class="text-xl">N. ${poke.level}</div>
+                     <div class="my-2">
+                         <span class="pokemon-type-tag ${getTypeColorClass(poke.type)} text-white">${poke.type}</span> 
+                         ${getRarityTagHTML(poke.rarity)}
+                         ${index === activePokemonIndex ? '<div class="text-sm font-bold text-yellow-500 mt-1">Actif</div>' : ''}
+                     </div>
+                     <div class="hp-bar-container my-2 w-48">
+                         <div class="hp-bar ${updateHpBarColor(poke.hp, poke.maxHp)}" style="width: ${Math.max(0, poke.hp / poke.maxHp) * 100}%;"></div>
+                     </div>
+                     <div class="text-sm">${poke.hp} / ${poke.maxHp} PV (Max: ${poke.maxHp})</div>
+                 </div>
+            </div>
+            
+            <div class="mt-6 text-left border-t-4 border-b-4 border-white py-4 w-full mx-auto">
+                 <div class="text-lg font-bold mb-2">Statistiques</div>
+                 <p class="text-sm"><strong>Attaque:</strong> ${poke.stats.atk}</p>
+                 <p class="text-sm"><strong>Défense:</strong> ${poke.stats.def}</p>
+                 <p class="text-sm mt-2"><strong>Faiblesses (Craint):</strong> ${weaknesses}</p>
+                 <p class="text-sm"><strong>Forces (Supérieur):</strong> ${strengths}</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 mt-6">
+                <button class="text-white font-bold p-3 w-full ${healButtonClass}" ${canHeal ? `onclick="usePotion(${index})"` : 'disabled'}>
+                    Soigner (x${playerResources.potion})
+                </button>
+
+                <button class="text-white font-bold p-3 w-full ${canUpgrade ? upgradeButtonClass : 'bg-gray-500 cursor-not-allowed'}" ${canUpgrade && canAffordUpgrade ? `onclick="upgradePokemon(${index})"` : 'disabled'}>
+                    Améliorer (+1 Niv.) - ${upgradeCost} Poussière
+                </button>
+                
+                <button class="text-white font-bold p-3 w-full ${canSwitch || isForcedSwitch ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-500 cursor-not-allowed'}" ${canSwitch || isForcedSwitch ? `onclick="switchPokemon(${index})"` : 'disabled'}>
+                    ${switchButtonText}
+                </button>
+                
+                <button class="font-bold p-3 w-full ${recycleButtonClass}" ${canRecycle ? `onclick="recyclePokemon(${index})"` : 'disabled'}>
+                    Recycler (Gagner Poussière)
+                </button>
+
+            </div>
+            
+            <button class="mt-6 text-white font-bold p-3 bg-gray-700 hover:bg-gray-600 w-full" onclick="renderInventory('pokemon', ${isForcedSwitch})">
+                Retour à la liste
+            </button>
+        `;
+    }
+
+    function switchPokemon(index) {
+        if (playerRoster[index].hp <= 0 || index === activePokemonIndex) return;
+        
+        // 1. Sauvegarder l'état du Pokémon actuel (si en combat)
+        if (isInBattle) {
+            playerRoster[activePokemonIndex].hp = playerPokemon.hp;
+        }
+        
+        // 2. Changer l'index actif
+        activePokemonIndex = index;
+        playerPokemon = playerRoster[activePokemonIndex];
+        
+        logMessage(`${playerRoster[activePokemonIndex].name}, en avant !`);
+
+        switchPanel.style.opacity = '0';
+        switchPanel.style.pointerEvents = 'none';
+        setTimeout(() => { 
+            switchPanel.style.display = 'none'; 
+        }, 300);
+        pokemonDetailPanel.style.display = 'none';
+        rosterContainer.style.display = 'none';
+        resourceInventoryDisplay.style.display = 'none';
+        
+        const wasForceSwitch = switchPanel.dataset.forceSwitch === 'true';
+        
+        if (isInBattle) { 
+            battleArena.style.opacity = '1';
+            battleArena.style.pointerEvents = 'auto';
+
+            if (playerPokemon.hp > 0) { 
+                
+                if (wasForceSwitch) {
+                    isPlayerTurn = true; 
+                } 
+                
+                updateUI();
+                logMessage(`Que doit faire ${playerPokemon.name} ?`);
+                
+                switchPanel.dataset.forceSwitch = 'false';
+                
+                // Si le switch n'était pas forcé (switch en cours de combat), l'adversaire joue
+                if (!wasForceSwitch) {
+                    isPlayerTurn = false;
+                    setTimeout(opponentTurn, 1000); 
+                }
+
+            } else {
+                checkFaint(playerPokemon, playerPokemon.name);
+            }
+        } else {
+            explorationScreen.style.opacity = '1';
+            explorationScreen.style.pointerEvents = 'auto';
+            // MODIFIÉ: Rétablir l'opacité de l'image
+            playerExplorerImg.style.opacity = '1'; 
+            
+            if (document.activeElement) document.activeElement.blur();
+            document.body.focus();
+        }
+    }
+
+    function recyclePokemon(index) {
+        if (index === activePokemonIndex || isInBattle) return;
+        
+        const poke = playerRoster[index];
+        const dustGained = Math.floor(poke.level * 2);
+        
+        // 1. Retirer le Pokémon du roster
+        playerRoster.splice(index, 1);
+        
+        // 2. Mettre à jour l'index actif si l'index supprimé était avant l'index actif
+        if (index < activePokemonIndex) {
+            activePokemonIndex--;
+        }
+        
+        // 3. Ajouter la poussière
+        playerResources.dust += dustGained;
+        
+        // 4. Mettre à jour l'UI des ressources
+        updateResourceDisplay();
+        shopDustDisplay.textContent = playerResources.dust; 
+        
+        // 5. Revenir à la liste des Pokémon
+        renderInventory('pokemon', switchPanel.dataset.forceSwitch === 'true');
+    }
+
+    function calculateUpgradeCost(poke) {
+        // FIX BUG 2: Calcul du coût d'amélioration (exponentiel)
+        const baseCost = rarityDustCostBase[poke.rarity] || 100;
+        const levelMultiplier = Math.max(0, poke.level - 5);
+        // Coût exponentiel
+        const cost = Math.floor(baseCost * Math.pow(1.1, levelMultiplier));
+        return cost;
+    }
+    
+    function usePotion(index) {
+        const poke = playerRoster[index];
+        if (playerResources.potion <= 0 || poke.hp >= poke.maxHp) return;
+        
+        const healAmount = 50;
+        poke.hp = Math.min(poke.maxHp, poke.hp + healAmount);
+        playerResources.potion--;
+        
+        // Si le Pokémon était actif en combat
+        if (index === activePokemonIndex && isInBattle) {
+            playerPokemon.hp = poke.hp;
+            updateUI();
+            logMessage(`${playerPokemon.name} est soigné de ${healAmount} PV !`);
+            
+            // Le tour est donné à l'adversaire après utilisation de l'objet
+            // S'assurer que le bouton d'action est bien désactivé pour éviter les doubles clics
+            [move1, move2, move3, switchButton, fleeButton].forEach(btn => btn.disabled = true);
+            isPlayerTurn = false;
+            closeSwitchPanel(); // Fermer l'inventaire
+            setTimeout(opponentTurn, 1000); 
+
+        } else {
+            updateResourceDisplay();
+            // FIX BUG: Appeler showPokemonDetail pour rafraîchir la vue des détails après soin
+            showPokemonDetail(index, switchPanel.dataset.forceSwitch === 'true');
+        }
+    }
+
+    function upgradePokemon(index) {
+        const poke = playerRoster[index];
+        const cost = calculateUpgradeCost(poke);
+
+        if (playerResources.dust < cost) {
+            return;
+        }
+        if (poke.level >= 100) {
+            return;
+        }
+
+        playerResources.dust -= cost;
+        poke.level += 1;
+        
+        // Trouver la base DB du Pokémon
+        const basePokemonKey = Object.keys(pokemonDB).find(key => pokemonDB[key].name === poke.name);
+        const basePokemon = pokemonDB[basePokemonKey];
+        
+        // Augmentation des PV Max et Stats basée sur le niveau (simplifié)
+        const levelIncrease = 1;
+        poke.maxHp = Math.floor(poke.maxHp + (5 * levelIncrease)); 
+        poke.hp = poke.maxHp; // Soin complet après amélioration
+        
+        // Augmentations simples des stats
+        poke.stats.atk = Math.floor(poke.stats.atk + (1 * levelIncrease)); 
+        poke.stats.def = Math.floor(poke.stats.def + (1 * levelIncrease)); 
+        
+        updateResourceDisplay();
+        shopDustDisplay.textContent = playerResources.dust;
+        
+        // FIX BUG: Appeler showPokemonDetail pour rafraîchir la vue des détails INSTANTANÉMENT
+        showPokemonDetail(index, switchPanel.dataset.forceSwitch === 'true');
+    }
+
+    function updateResourceDisplay() {
+        dustCountDisplay.textContent = playerResources.dust;
+        potionCountDisplay.textContent = playerResources.potion;
+    }
+
+    </script>
+</body>
+</html>
